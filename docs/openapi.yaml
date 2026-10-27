@@ -1,0 +1,259 @@
+openapi: 3.1.0
+info:
+  title: Login Service
+  description: "Login, troca de senha, cadastro e desbloqueio de usuários. Endpoints\
+    \ de manutenção e administração exigem HTTP Basic de um operador com a role adequada."
+  version: 1.0.0
+servers:
+- url: http://localhost:8080
+  description: Generated server url
+paths:
+  /unlock/{userid}:
+    put:
+      tags:
+      - administração
+      summary: Desbloqueia usuário
+      description: Remove o bloqueio e zera as falhas de login do usuário. Requer
+        ROLE_ADMIN.
+      operationId: desbloquear
+      parameters:
+      - name: userid
+        in: path
+        description: Nome do usuário a desbloquear
+        required: true
+        schema:
+          type: string
+        example: joao
+      responses:
+        "200":
+          description: Usuário desbloqueado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "401":
+          description: Credenciais do operador ausentes ou inválidas
+        "403":
+          description: Operador sem a role ADMIN
+        "404":
+          description: Usuário não encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+      security:
+      - basicAuth: []
+  /trocarsenha/{userid}:
+    put:
+      tags:
+      - autenticação
+      summary: Troca a senha
+      description: Troca a senha do usuário após conferir a senha atual. Senha atual
+        errada conta como falha para o bloqueio. Acesso público.
+      operationId: trocarSenha
+      parameters:
+      - name: userid
+        in: path
+        description: Nome do usuário
+        required: true
+        schema:
+          type: string
+        example: joao
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrocaSenha"
+        required: true
+      responses:
+        "200":
+          description: Senha alterada
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "400":
+          description: Nova senha inválida (vazia ou com mais de 10 caracteres)
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "401":
+          description: Senha atual inválida
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "404":
+          description: Usuário não encontrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "423":
+          description: Usuário bloqueado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+  /login:
+    post:
+      tags:
+      - autenticação
+      summary: Efetua login
+      description: Valida usuário e senha na tabela usuarios. Após mais de uma falha
+        consecutiva o usuário é bloqueado. Acesso público.
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credenciais"
+        required: true
+      responses:
+        "200":
+          description: Usuário e senha válidos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "400":
+          description: Corpo da requisição inválido
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "401":
+          description: Usuário e senha inválidos ou usuário bloqueado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+  /:
+    get:
+      tags:
+      - manutenção
+      summary: Lista usuários
+      description: Retorna todos os usuários cadastrados e sua situação de bloqueio.
+        Requer ROLE_MANUTENCAO.
+      operationId: listar
+      responses:
+        "200":
+          description: Lista de usuários
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Usuario"
+        "401":
+          description: Credenciais do operador ausentes ou inválidas
+        "403":
+          description: Operador sem a role MANUTENCAO
+      security:
+      - basicAuth: []
+    post:
+      tags:
+      - manutenção
+      summary: Cadastra usuário
+      description: Cadastra um novo usuário na tabela usuarios. Requer ROLE_MANUTENCAO.
+      operationId: cadastrar
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Credenciais"
+        required: true
+      responses:
+        "201":
+          description: Usuário cadastrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "400":
+          description: Dados inválidos
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+        "401":
+          description: Credenciais do operador ausentes ou inválidas
+        "403":
+          description: Operador sem a role MANUTENCAO
+        "409":
+          description: Usuário já cadastrado
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/Mensagem"
+      security:
+      - basicAuth: []
+components:
+  schemas:
+    Mensagem:
+      type: object
+      description: Mensagem de retorno da operação
+      properties:
+        mensagem:
+          type: string
+          description: Texto da mensagem
+          example: Login efetuado com sucesso
+    TrocaSenha:
+      type: object
+      description: Senha atual e nova senha do usuário
+      properties:
+        atual:
+          type: string
+          description: Senha atual
+          example: joao123
+          minLength: 1
+        nova:
+          type: string
+          description: Nova senha (máximo 10 caracteres)
+          example: nova123
+          maxLength: 10
+          minLength: 0
+      required:
+      - atual
+      - nova
+    Credenciais:
+      type: object
+      description: Usuário e senha usados no login e no cadastro
+      properties:
+        username:
+          type: string
+          description: Nome do usuário
+          example: joao
+          maxLength: 100
+          minLength: 0
+        senha:
+          type: string
+          description: Senha do usuário (máximo 10 caracteres)
+          example: joao123
+          maxLength: 10
+          minLength: 0
+      required:
+      - senha
+      - username
+    Usuario:
+      type: object
+      description: Usuário cadastrado e sua situação de bloqueio
+      properties:
+        username:
+          type: string
+          description: Nome do usuário
+          example: joao
+        tentativasFalhas:
+          type: integer
+          format: int32
+          description: Quantidade de falhas de login consecutivas
+          example: 0
+        bloqueado:
+          type: boolean
+          description: Indica se o usuário está bloqueado
+          example: false
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic

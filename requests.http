@@ -1,0 +1,41 @@
+@base = http://localhost:8080
+
+### Login válido (200)
+POST {{base}}/login
+Content-Type: application/json
+
+{"username": "joao", "senha": "joao123"}
+
+### Login inválido (401) - repetir duas vezes bloqueia o usuário
+POST {{base}}/login
+Content-Type: application/json
+
+{"username": "maria", "senha": "errada"}
+
+### Troca de senha (público)
+PUT {{base}}/trocarsenha/joao
+Content-Type: application/json
+
+{"atual": "joao123", "nova": "joao456"}
+
+### Cadastro de usuário (ROLE_MANUTENCAO)
+POST {{base}}/
+Authorization: Basic manutencao:manut123
+Content-Type: application/json
+
+{"username": "ana", "senha": "ana123"}
+
+### Lista de usuários (ROLE_MANUTENCAO)
+GET {{base}}/
+Authorization: Basic manutencao:manut123
+
+### Desbloqueio (ROLE_ADMIN)
+PUT {{base}}/unlock/maria
+Authorization: Basic admin:admin123
+
+### Desbloqueio com operador sem a role ADMIN (403)
+PUT {{base}}/unlock/maria
+Authorization: Basic manutencao:manut123
+
+### Métricas
+GET {{base}}/actuator/prometheus
